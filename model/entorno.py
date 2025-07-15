@@ -1,4 +1,5 @@
 # === LIBRERÍAS DE MESA ===
+from random import random
 from mesa import Agent, Model                          # Agente base y modelo
 from mesa.space import MultiGrid                       # Espacio tipo grilla con múltiples agentes por celda
 from mesa.time import SimultaneousActivation           # Activador para que todos los agentes actúen simultáneamente
@@ -138,6 +139,97 @@ class ShoppingModel(Model):
 
         self.alarma_activa = True  # Activa la alarma global
 
+    def _propagar_fuego(self):
+        """
+        Propaga el fuego a UNA celda adyacente (local o pasillo) por cada celda en llamas.
+        """
+        from random import shuffle
+
+        nuevas_llamas = []
+        probabilidad_fuego = 0.3  # Probabilidad de que el fuego se propague a una celda adyacente
+
+        for x in range(self.width):
+            for y in range(self.height):
+                for obj in self.grid.get_cell_list_contents((x, y)):
+                    if isinstance(obj, ShoppingCell) and obj.cell_type == "F":
+                        # Busca vecinos candidatos
+                        if random() < probabilidad_fuego:
+                            vecinos = self.grid.get_neighborhood((x, y), moore=True, include_center=False)
+                            candidatos = []
+                            for nx, ny in vecinos:
+                                for vecino in self.grid.get_cell_list_contents((nx, ny)):
+                                    if isinstance(vecino, ShoppingCell) and vecino.cell_type in ("L", "."):
+                                        candidatos.append((nx, ny))
+                            # Si hay candidatos, elige uno al azar
+                            if candidatos:
+                                shuffle(candidatos)
+                                nuevas_llamas.append(candidatos[0])
+        # Cambia las celdas seleccionadas a fuego 
+        for pos in nuevas_llamas:
+            for obj in self.grid.get_cell_list_contents(pos):
+                if isinstance(obj, ShoppingCell):
+                    obj.cell_type = "F"
+                    break
+
+        for pos in nuevas_llamas:
+            for obj in self.grid.get_cell_list_contents(pos):
+                if isinstance(obj, ShoppingCell):
+                    obj.cell_type = "F"
+                # Si hay un evacuante en la celda, lo "mata :("
+                self.matar_evacuante(pos[0], pos[1], obj, "fuego")
+
+    def _generar_derrumbe(self):
+        """
+        Cada 8 ticks, genera un derrumbe (barrera de longitud 4) en posición y dirección aleatoria.
+        Si un evacuante está debajo, muere.
+        """
+        from random import randint, choice
+
+        # Direcciones posibles: horizontal (1,0) o vertical (0,1)
+        direcciones = [(1, 0), (0, 1)]
+        dx, dy = choice(direcciones)
+        longitud_derrumbe = 4  # Longitud del derrumbe
+
+        # Buscar una posición inicial válida (que no sea muro ni salida)
+        intentos = 0
+        while True:
+            x = randint(0, self.width - 1)
+            y = randint(0, self.height - 1)
+            posiciones = [(x + i * dx, y + i * dy) for i in range(longitud_derrumbe)]
+            # Verifica que todas las posiciones estén dentro del grid y sean transitables
+            if all(
+                0 <= px < self.width and 0 <= py < self.height
+                for px, py in posiciones
+            ):
+                # Solo permite derrumbe sobre pasillo o local
+                celdas_validas = True
+                for px, py in posiciones:
+                    for obj in self.grid.get_cell_list_contents((px, py)):
+                        if isinstance(obj, ShoppingCell) and obj.cell_type not in (".", "L"):
+                            celdas_validas = False
+                if celdas_validas:
+                    break
+            intentos += 1
+            if intentos > 100:  # Evita bucle infinito si no hay espacio
+                return
+
+        # Aplica el derrumbe
+        for px, py in posiciones:
+            for obj in self.grid.get_cell_list_contents((px, py)):
+                if isinstance(obj, ShoppingCell):
+                    obj.cell_type = "D"  # Derrumbe
+                # Si hay un evacuante en la celda, lo "mata :("
+                self.matar_evacuante(px, py, obj, "derrumbe")
+
+    def matar_evacuante(self, px, py, obj, accion):
+        """
+        Si hay un evacuante en la posición (px, py), lo marca como muerto.
+        """
+        if isinstance(obj, Evacuante) and obj.state != Evacuante.MUERTO:
+            print(f"💀 Evacuante muerto por {accion} en:", (px, py))
+            obj.state = Evacuante.MUERTO
+
+    
     # --- AVANCE GLOBAL DEL MODELO ---
     def step(self):
         """
@@ -149,9 +241,17 @@ class ShoppingModel(Model):
         self.schedule.step()
         self.tick_counter += 1
 
+        # Genera fuego inicial en el primer tick
         if self.tick_counter == 2:
             self._generar_fuego_inicial()
+        
+        # Propaga el fuego a partir del tick 3
+        if self.alarma_activa:
+            self._propagar_fuego()
 
+        # Genera un derrumbe aleatorio cada 8 ticks
+        if self.tick_counter % 8 == 0:
+            self._generar_derrumbe()
 
 # === VISUALIZACIÓN DE LOS AGENTES ===
 def agent_portrayal(agent):
@@ -174,10 +274,16 @@ def agent_portrayal(agent):
         portrayal["Layer"] = 0
 
     elif isinstance(agent, Evacuante):
-        # Los evacuantes se dibujan como círculos morados
+        # Los evacuantes se dibujan como círculos
         portrayal["Shape"] = "circle"
         portrayal["r"]     = 0.5
         portrayal["Color"] = "purple"
+        if agent.state == Evacuante.MUERTO:
+            portrayal["Color"] = "gray"
+        # elif agent.state == Evacuante.EVACUATED:
+        #     portrayal["Color"] = "yellow"
+        # elif agent.state == Evacuante.EVACUATING:
+        #     portrayal["Color"] = "red"
         portrayal["Layer"] = 1
 
     return portrayal

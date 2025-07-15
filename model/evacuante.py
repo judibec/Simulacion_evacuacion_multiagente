@@ -15,6 +15,7 @@ class Evacuante(Agent):
     EVACUATING   = "evacuating"  # Alarma activa: busca una salida
     BLOCKED      = "blocked"     # No puede avanzar (bloqueado)
     EVACUATED    = "evacuated"   # Llegó a una salida
+    MUERTO       = "muerto"      # El agente ha muerto por fuego
 
     def __init__(self, unique_id: str, model, vision: int = 3):
         """
@@ -56,6 +57,7 @@ class Evacuante(Agent):
         for pos in neighborhood:
             for obj in self.model.grid.get_cell_list_contents(pos):
                 if getattr(obj, "cell_type", None) == "S":
+                    print("📗 Evacuante ve salida en:", pos)
                     return pos
         return None
 
@@ -171,6 +173,10 @@ class Evacuante(Agent):
         elif self.state == Evacuante.IDLE:
             # Si no hay alarma, se mueve aleatoriamente por los pasillos
             self.random_move()
+
+        elif self.state == Evacuante.MUERTO:
+            # Si está muerto, no hace nada
+            return
 
         # 4. Comunicación básica
         self._communicate()
