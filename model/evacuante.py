@@ -137,9 +137,9 @@ class Evacuante(Agent):
         # 1. Transición a estado de evacuación si se activa la alarma
         if self.model.alarma_activa and self.state == Evacuante.IDLE:
             self.state = Evacuante.EVACUATING
-            salida = self.model.salida_mas_cercana(self.pos)
-            if salida:
-                self.path = self._find_path(salida)
+            #salida = self.model.salida_mas_cercana(self.pos) TODO: descomentar si se quiere calcular salida al inicio
+            #if salida:
+                #self.path = self._find_path(salida)
 
         # 2. Escanear su entorno
         neighborhood = self._get_neighborhood()
@@ -152,12 +152,12 @@ class Evacuante(Agent):
                 self.path = self._find_path(salida_visible)
 
             # Si su ruta quedó vacía o no es válida, busca nueva salida
-            if not self.path:
-                salida = self.model.salida_mas_cercana(self.pos)
-                if salida:
-                    self.path = self._find_path(salida)
-                else:
-                    self.state = Evacuante.BLOCKED  # no hay ruta posible
+            #if not self.path: TODO: descomentar si se quiere recalcular ruta al no tener salida
+            #    salida = self.model.salida_mas_cercana(self.pos)
+            #    if salida:
+            #        self.path = self._find_path(salida)
+            #    else:
+            #        self.state = Evacuante.BLOCKED  # no hay ruta posible
 
             # Avanza un paso
             self._move_along_path()
@@ -174,6 +174,7 @@ class Evacuante(Agent):
 
         # 4. Comunicación básica
         self._communicate()
+        self.random_move() # TODO se coloca provisionalmente para evitar que se quede parado
 
     # ================================
     # MOVIMIENTO ALEATORIO (IDLE)
