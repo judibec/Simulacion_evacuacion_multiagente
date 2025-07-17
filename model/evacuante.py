@@ -57,7 +57,7 @@ class Evacuante(Agent):
         for pos in neighborhood:
             for obj in self.model.grid.get_cell_list_contents(pos):
                 if getattr(obj, "cell_type", None) == "S":
-                    print("📗 Evacuante ve salida en:", pos)
+                    print("📗 Evacuante", self.unique_id, "ve salida en:", pos)
                     return pos
         return None
 
@@ -92,7 +92,11 @@ class Evacuante(Agent):
                 # Verifica que la celda no sea peligrosa o muro
                 cell_safe = True
                 for obj in self.model.grid.get_cell_list_contents((nx, ny)):
-                    if getattr(obj, "cell_type", None) in ("#", "F", "D"):
+                    cell_type = getattr(obj, "cell_type", None)
+                    if cell_type in ("#", "F", "D"):
+                        cell_safe = False
+                        break
+                    if cell_type == "S" and (nx, ny) != target:
                         cell_safe = False
                         break
 
@@ -136,12 +140,15 @@ class Evacuante(Agent):
         - Si está bloqueado o evacuado, se queda quieto.
         - Si está IDLE, se mueve aleatoriamente por el entorno.
         """
+        if self.state in (Evacuante.EVACUATED, Evacuante.MUERTO):
+            return
+
         # 1. Transición a estado de evacuación si se activa la alarma
         if self.model.alarma_activa and self.state == Evacuante.IDLE:
             self.state = Evacuante.EVACUATING
-            #salida = self.model.salida_mas_cercana(self.pos) TODO: descomentar si se quiere calcular salida al inicio
+            #salida = self.model.salida_mas_cercana(self.pos) #TODO: descomentar si se quiere calcular salida al inicio
             #if salida:
-                #self.path = self._find_path(salida)
+            #    self.path = self._find_path(salida)
 
         # 2. Escanear su entorno
         neighborhood = self._get_neighborhood()
@@ -151,7 +158,8 @@ class Evacuante(Agent):
         if self.state == Evacuante.EVACUATING:
             # Si ve una salida, intenta recalcular la ruta hacia ella
             if salida_visible:
-                self.path = self._find_path(salida_visible)
+                if not self.path or self.path[-1] != salida_visible:
+                    self.path = self._find_path(salida_visible)
 
             # Si su ruta quedó vacía o no es válida, busca nueva salida
             #if not self.path: TODO: descomentar si se quiere recalcular ruta al no tener salida
@@ -162,25 +170,25 @@ class Evacuante(Agent):
             #        self.state = Evacuante.BLOCKED  # no hay ruta posible
 
             # Avanza un paso
-            self._move_along_path()
+            if self.path:
+                self._move_along_path()
+            else:
+                self.random_move()
 
             # Revisa si ya llegó a una salida
             for obj in self.model.grid.get_cell_list_contents(self.pos):
                 if getattr(obj, "cell_type", None) == "S":
                     self.state = Evacuante.EVACUATED
-                    break
+                    self.path = []
+                    return
 
         elif self.state == Evacuante.IDLE:
             # Si no hay alarma, se mueve aleatoriamente por los pasillos
             self.random_move()
 
-        elif self.state == Evacuante.MUERTO:
-            # Si está muerto, no hace nada
-            return
-
         # 4. Comunicación básica
         self._communicate()
-        self.random_move() # TODO se coloca provisionalmente para evitar que se quede parado
+        #self.random_move() # TODO se coloca provisionalmente para evitar que se quede parado
 
     # ================================
     # MOVIMIENTO ALEATORIO (IDLE)

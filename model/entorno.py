@@ -226,7 +226,7 @@ class ShoppingModel(Model):
         """
         Si hay un evacuante en la posición (px, py), lo marca como muerto.
         """
-        if isinstance(obj, Evacuante) and obj.state != Evacuante.MUERTO:
+        if isinstance(obj, Evacuante) and obj.state != Evacuante.MUERTO and obj.state != Evacuante.EVACUATED:
             print(f"💀 Evacuante muerto por {accion} en:", (px, py))
             obj.state = Evacuante.MUERTO
 
@@ -281,8 +281,8 @@ def agent_portrayal(agent):
         portrayal["Color"] = "purple"
         if agent.state == Evacuante.MUERTO:
             portrayal["Color"] = "gray"
-        # elif agent.state == Evacuante.EVACUATED:
-        #     portrayal["Color"] = "yellow"
+        elif agent.state == Evacuante.EVACUATED:
+             portrayal["Color"] = "yellow"
         # elif agent.state == Evacuante.EVACUATING:
         #     portrayal["Color"] = "red"
         portrayal["Layer"] = 1
