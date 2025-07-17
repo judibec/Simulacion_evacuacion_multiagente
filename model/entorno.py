@@ -9,6 +9,9 @@ from mesa.visualization.ModularVisualization import ModularServer  # Servidor we
 # === AGENTE MÓVIL: EVACUANTE ===
 from .evacuante import Evacuante                       # Importamos el agente Evacuante definido en otro archivo
 
+from random import shuffle
+from random import randint, choice
+
 # === PARÁMETROS DE LA VISTA ===
 CELL_SIZE = 15                                         # Tamaño de cada celda en píxeles
 canvas_width = CELL_SIZE * 49                          # Ancho del canvas en píxeles (49 columnas)
@@ -143,7 +146,6 @@ class ShoppingModel(Model):
         """
         Propaga el fuego a UNA celda adyacente (local o pasillo) por cada celda en llamas.
         """
-        from random import shuffle
 
         nuevas_llamas = []
         probabilidad_fuego = 0.3  # Probabilidad de que el fuego se propague a una celda adyacente
@@ -183,7 +185,6 @@ class ShoppingModel(Model):
         Cada 8 ticks, genera un derrumbe (barrera de longitud 4) en posición y dirección aleatoria.
         Si un evacuante está debajo, muere.
         """
-        from random import randint, choice
 
         # Direcciones posibles: horizontal (1,0) o vertical (0,1)
         direcciones = [(1, 0), (0, 1)]
