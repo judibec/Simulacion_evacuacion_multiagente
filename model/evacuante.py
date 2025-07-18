@@ -176,7 +176,7 @@ class Evacuante(Agent):
                 brigadista = self._see_brigadista(neighborhood)
                 if brigadista:
                     destino_recomendado = brigadista._get_help() 
-                    print(f"➡️ Destino recomendado por brigadista {brigadista.unique_id}: {destino_recomendado}c")
+                    print(f"➡️ Destino recomendado por brigadista {brigadista.unique_id}: {destino_recomendado}")
                     if not self.path or self.path[-1] != destino_recomendado:
                         self.path = self._find_path(destino_recomendado)
             # Avanza un paso
