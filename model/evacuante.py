@@ -3,6 +3,9 @@
 from typing import Tuple, List
 from mesa import Agent
 
+from model.brigadista import Brigadista
+
+
 class Evacuante(Agent):
     """
     Agente que representa a una persona que debe evacuar el edificio.
@@ -93,7 +96,7 @@ class Evacuante(Agent):
                 cell_safe = True
                 for obj in self.model.grid.get_cell_list_contents((nx, ny)):
                     cell_type = getattr(obj, "cell_type", None)
-                    if cell_type in ("#", "F", "D"):
+                    if cell_type in ("#", "F", "D", "L"):
                         cell_safe = False
                         break
                     if cell_type == "S" and (nx, ny) != target:
@@ -153,6 +156,7 @@ class Evacuante(Agent):
         # 2. Escanear su entorno
         neighborhood = self._get_neighborhood()
         salida_visible = self._see_exit(neighborhood)
+        self._compartir_ruta_con_evacuantes(neighborhood)
 
         # 3. Comportamiento según el estado actual
         if self.state == Evacuante.EVACUATING:
@@ -168,7 +172,12 @@ class Evacuante(Agent):
             #        self.path = self._find_path(salida)
             #    else:
             #        self.state = Evacuante.BLOCKED  # no hay ruta posible
-
+            else:
+                brigadista_pos = self._see_brigadista(neighborhood)
+                if brigadista_pos:
+                    destino_recomendado = (0, 33)  # Coordenada fija recomendada por brigadista
+                    if not self.path or self.path[-1] != destino_recomendado:
+                        self.path = self._find_path(destino_recomendado)
             # Avanza un paso
             if self.path:
                 self._move_along_path()
@@ -188,6 +197,12 @@ class Evacuante(Agent):
 
         # 4. Comunicación básica
         self._communicate()
+        for obj in self.model.grid.get_cell_list_contents(self.pos):
+            if getattr(obj, "cell_type", None) == "F":
+                self.state = Evacuante.MUERTO
+                self.path = []
+                print(f"🔥 {self.unique_id} murió en {self.pos} por fuego")
+                return
         #self.random_move() # TODO se coloca provisionalmente para evitar que se quede parado
 
     # ================================
@@ -225,3 +240,36 @@ class Evacuante(Agent):
                 self.model.grid.move_agent(self, (nx, ny))
                 print(f"{self.unique_id}: ({x0},{y0}) → ({nx},{ny})")
                 break
+
+    def _see_brigadista(self, neighborhood: List[Tuple[int, int]]) -> Tuple[int, int] | None:
+        """
+        Recorre el vecindario buscando un brigadista visible.
+        Si encuentra alguno, retorna su posición. Si no, None.
+        """
+        for pos in neighborhood:
+            for obj in self.model.grid.get_cell_list_contents(pos):
+                if isinstance(obj, Brigadista):
+                    print(f"🧡 {self.unique_id} ve a un brigadista en {pos}")
+                    return pos
+        return None
+
+    def _compartir_ruta_con_evacuantes(self, neighborhood: List[Tuple[int, int]]):
+        """
+        Si este agente tiene una ruta, la comparte con evacuantes cercanos que no tengan una.
+        """
+        if not self.path:
+            return  # No hay nada que compartir
+
+        for pos in neighborhood:
+            for obj in self.model.grid.get_cell_list_contents(pos):
+                if isinstance(obj, Evacuante) and obj != self:
+                    if obj.state == Evacuante.EVACUATING and not obj.path:
+                        # Copia la ruta desde la posición actual del otro agente
+                        index_actual = next((i for i, p in enumerate(self.path) if p == obj.pos), None)
+                        if index_actual is not None:
+                            nueva_ruta = self.path[index_actual + 1:]  # Saltearse su propia posición
+                        else:
+                            nueva_ruta = list(self.path)  # Copia completa si no está en el camino
+
+                        obj.path = nueva_ruta
+                        print(f"🔁 {self.unique_id} compartió ruta con {obj.unique_id}")
