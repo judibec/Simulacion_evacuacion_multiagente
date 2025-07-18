@@ -17,6 +17,7 @@ class Brigadista(Agent):
         self.state = Brigadista.IDLE
         self.path: List[Tuple[int, int]] = []
         self.blackboard = model.blackboard
+
         # Blackboard compartido por todos los brigadistas
         if not hasattr(model, 'blackboard'):
             model.blackboard = Blackboard()
@@ -51,17 +52,25 @@ class Brigadista(Agent):
                     visited.add((nx, ny))
                     queue.append(((nx, ny), path + [(nx, ny)]))
         return []
+    
+    def _get_help(self) -> Tuple[int, int]:
+        """
+        Método para solicitar ayuda a otros brigadistas.
+        Aquí podrías implementar lógica para buscar brigadistas cercanos y pedir asistencia.
+        """
+        # Implementación de ejemplo: retorna una posición fija
+        return (0, 33)
 
     def step(self):
+        # Registrar posición propia en el blackboard
+        self.blackboard.write_position(self.unique_id, self.pos)
         print(f"Brigadista {self.unique_id} blackboard: {self.blackboard.read_all_positions()}")
         if self.state == Brigadista.ARRIVED:
             return
-        # Registrar posición propia en el blackboard
-        self.blackboard.write_position(self.unique_id, self.pos)
 
         # Consultar posiciones de otros brigadistas (ejemplo de uso)
-        posiciones_otros = {k: v for k, v in self.blackboard.read_all_positions().items() if k != self.unique_id}
-        # Aquí podrías usar posiciones_otros para lógica colaborativa
+        # posiciones_otros = {k: v for k, v in self.blackboard.read_all_positions().items() if k != self.unique_id}
+
         # Si no tiene ruta, la calcula
         if not self.path:
             self.path = self._find_path(self.objetivo)

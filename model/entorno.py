@@ -38,7 +38,7 @@ class ShoppingModel(Model):
     Modelo principal del centro comercial.
     Contiene el mapa, los evacuantes y la lógica general del entorno.
     """
-    def __init__(self, num_users=7, seed=None):
+    def __init__(self, num_users=25, seed=None):
         super().__init__(seed=seed)              # Crea el generador aleatorio de Mesa
         self.num_users = num_users               # Número de evacuantes a crear
         self.tick_counter  = 0                   # Contador global de ticks

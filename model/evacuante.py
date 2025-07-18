@@ -173,9 +173,9 @@ class Evacuante(Agent):
             #    else:
             #        self.state = Evacuante.BLOCKED  # no hay ruta posible
             else:
-                brigadista_pos = self._see_brigadista(neighborhood)
-                if brigadista_pos:
-                    destino_recomendado = (0, 33)  # Coordenada fija recomendada por brigadista
+                brigadista = self._see_brigadista(neighborhood)
+                if brigadista:
+                    destino_recomendado = brigadista._get_help()  # Coordenada fija recomendada por brigadista
                     if not self.path or self.path[-1] != destino_recomendado:
                         self.path = self._find_path(destino_recomendado)
             # Avanza un paso
@@ -241,7 +241,7 @@ class Evacuante(Agent):
                 print(f"{self.unique_id}: ({x0},{y0}) → ({nx},{ny})")
                 break
 
-    def _see_brigadista(self, neighborhood: List[Tuple[int, int]]) -> Tuple[int, int] | None:
+    def _see_brigadista(self, neighborhood: List[Tuple[int, int]]) -> Brigadista | None:
         """
         Recorre el vecindario buscando un brigadista visible.
         Si encuentra alguno, retorna su posición. Si no, None.
@@ -250,7 +250,7 @@ class Evacuante(Agent):
             for obj in self.model.grid.get_cell_list_contents(pos):
                 if isinstance(obj, Brigadista):
                     print(f"🧡 {self.unique_id} ve a un brigadista en {pos}")
-                    return pos
+                    return obj
         return None
 
     def _compartir_ruta_con_evacuantes(self, neighborhood: List[Tuple[int, int]]):
