@@ -8,6 +8,7 @@ from mesa.visualization.ModularVisualization import ModularServer  # Servidor we
 
 # === AGENTE MÓVIL: EVACUANTE ===
 from .evacuante import Evacuante                       # Importamos el agente Evacuante definido en otro archivo
+from .brigadista import Brigadista                     # Importamos el agente Brigadista
 
 from random import shuffle
 from random import randint, choice
@@ -36,9 +37,11 @@ class ShoppingModel(Model):
     Modelo principal del centro comercial.
     Contiene el mapa, los evacuantes y la lógica general del entorno.
     """
-    def __init__(self, num_users=7, seed=None):
+    def __init__(self, num_users=7, num_brigadistas=2, brigadista_objetivos=None, seed=None):
         super().__init__(seed=seed)              # Crea el generador aleatorio de Mesa
         self.num_users = num_users               # Número de evacuantes a crear
+        self.num_brigadistas = num_brigadistas   # Número de brigadistas a crear
+        self.brigadista_objetivos = brigadista_objetivos or []  # Lista de objetivos para brigadistas
         self.tick_counter  = 0                   # Contador global de ticks
         self.alarma_activa = False               # Bandera de alarma (fuego activado)
 
@@ -112,11 +115,30 @@ class ShoppingModel(Model):
         ]
         self.random.shuffle(empty_positions)  # Aleatoriza posiciones disponibles
 
+        # Coloca evacuantes
         for i in range(min(self.num_users, len(empty_positions))):
             pos   = empty_positions[i]
             agent = Evacuante(f"U{i}", self)     # Crea un evacuante con ID único
             self.grid.place_agent(agent, pos)    # Lo ubica en la posición
             self.schedule.add(agent)             # Lo añade al scheduler
+
+        # --- COLOCAR BRIGADISTAS EN POSICIONES BLANCAS ('.') ---
+        brigadista_positions = [(14, 11), (6, 22), (20, 21), (43, 25), (27, 5), (33, 31), (6, 35)]
+        for i, pos in enumerate(brigadista_positions, start=1):
+            # Asegurar que la posición es válida
+            while True:
+                dx = self.random.randint(-4, 4)
+                dy = self.random.randint(-4, 4)
+                new_x = max(0, pos[0] + dx)
+                new_y = max(0, pos[1] + dy)
+                if 0 <= new_x < self.width and 0 <= new_y < self.height:
+                    # Verifica si la celda es vacía ('.')
+                    celda = next((a for a in self.grid.get_cell_list_contents((new_x, new_y)) if isinstance(a, ShoppingCell)), None)
+                    if celda and celda.cell_type == ".":
+                        break
+            agent = Brigadista(f"B{i}", self, pos)
+            self.grid.place_agent(agent, (new_x, new_y))
+            self.schedule.add(agent)
 
     # --- MÉTODO PARA GENERAR FUEGO EN CASILLAS DE LOCALES ---
     def _generar_fuego_inicial(self, n_llamas=5):
@@ -274,6 +296,12 @@ def agent_portrayal(agent):
         portrayal["Color"] = color_map.get(agent.cell_type, "gray")
         portrayal["Layer"] = 0
 
+    elif isinstance(agent, Brigadista):
+        portrayal["Shape"] = "circle"
+        portrayal["r"]     = 0.8
+        portrayal["Color"] = "orange"  # Color para brigadistas
+        portrayal["Layer"] = 2
+
     elif isinstance(agent, Evacuante):
         # Los evacuantes se dibujan como círculos
         portrayal["Shape"] = "circle"
@@ -283,8 +311,6 @@ def agent_portrayal(agent):
             portrayal["Color"] = "gray"
         elif agent.state == Evacuante.EVACUATED:
              portrayal["Color"] = "yellow"
-        # elif agent.state == Evacuante.EVACUATING:
-        #     portrayal["Color"] = "red"
         portrayal["Layer"] = 1
 
     return portrayal
