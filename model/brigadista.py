@@ -55,16 +55,28 @@ class Brigadista(Agent):
     
     def _get_help(self) -> Tuple[int, int]:
         """
-        Método para solicitar ayuda a otros brigadistas.
-        Aquí podrías implementar lógica para buscar brigadistas cercanos y pedir asistencia.
+        Consulta la posición más cercana entre los otros brigadistas (usando el blackboard)
+        y una lista de posiciones extra (tuplas). Retorna la posición más cercana.
         """
-        # Implementación de ejemplo: retorna una posición fija
-        return (0, 33)
+        # Posiciones de las salidas
+        salidas : List[Tuple[int, int]] = [(4,0), (5,0), (46,0), (47,0), (20, 39), (21,39), (0, 31), (0, 32), (0, 33), (0, 34), (48, 23), (48, 24), (48, 25)]
+        
+        # Posiciones de otros brigadistas
+        posiciones_otros = [v for k, v in self.blackboard.read_all_positions().items() if k != self.unique_id]
+        todas = posiciones_otros + list(salidas)
+        
+        if not todas:
+            return self.pos
+        
+        # Buscar la posición más cercana
+        x0, y0 = self.pos
+        def distancia(p):
+            return abs(x0 - p[0]) + abs(y0 - p[1])
+        return min(todas, key=distancia)
 
     def step(self):
         # Registrar posición propia en el blackboard
         self.blackboard.write_position(self.unique_id, self.pos)
-        print(f"Brigadista {self.unique_id} blackboard: {self.blackboard.read_all_positions()}")
         if self.state == Brigadista.ARRIVED:
             return
 
