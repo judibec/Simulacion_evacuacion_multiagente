@@ -9,6 +9,7 @@ from mesa.visualization.ModularVisualization import ModularServer  # Servidor we
 # === AGENTE MÓVIL: EVACUANTE ===
 from .evacuante import Evacuante                       # Importamos el agente Evacuante definido en otro archivo
 from .brigadista import Brigadista                     # Importamos el agente Brigadista
+from .blackboard import Blackboard                     # Importamos el Blackboard para comunicación entre brigadistas
 
 from random import shuffle
 from random import randint, choice
@@ -37,13 +38,12 @@ class ShoppingModel(Model):
     Modelo principal del centro comercial.
     Contiene el mapa, los evacuantes y la lógica general del entorno.
     """
-    def __init__(self, num_users=7, num_brigadistas=2, brigadista_objetivos=None, seed=None):
+    def __init__(self, num_users=7, seed=None):
         super().__init__(seed=seed)              # Crea el generador aleatorio de Mesa
         self.num_users = num_users               # Número de evacuantes a crear
-        self.num_brigadistas = num_brigadistas   # Número de brigadistas a crear
-        self.brigadista_objetivos = brigadista_objetivos or []  # Lista de objetivos para brigadistas
         self.tick_counter  = 0                   # Contador global de ticks
         self.alarma_activa = False               # Bandera de alarma (fuego activado)
+        self.blackboard = Blackboard()  # Blackboard compartido por todos los brigadistas
 
         # --- MAPA ---
         self.map_2d = [
@@ -132,7 +132,7 @@ class ShoppingModel(Model):
                 new_x = max(0, pos[0] + dx)
                 new_y = max(0, pos[1] + dy)
                 if 0 <= new_x < self.width and 0 <= new_y < self.height:
-                    # Verifica si la celda es vacía ('.')
+                    # Verifica si la celda es vacía
                     celda = next((a for a in self.grid.get_cell_list_contents((new_x, new_y)) if isinstance(a, ShoppingCell)), None)
                     if celda and celda.cell_type == ".":
                         break

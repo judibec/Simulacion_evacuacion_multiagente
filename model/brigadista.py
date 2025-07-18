@@ -1,6 +1,8 @@
 # brigadista.py
 from mesa import Agent
 from typing import Tuple, List
+from collections import deque
+from .blackboard import Blackboard     
 
 class Brigadista(Agent):
     """
@@ -14,12 +16,16 @@ class Brigadista(Agent):
         self.objetivo = objetivo
         self.state = Brigadista.IDLE
         self.path: List[Tuple[int, int]] = []
+        self.blackboard = model.blackboard
+        # Blackboard compartido por todos los brigadistas
+        if not hasattr(model, 'blackboard'):
+            model.blackboard = Blackboard()
+        self.blackboard = model.blackboard
 
     def _find_path(self, target: Tuple[int, int]) -> List[Tuple[int, int]]:
         """
         Encuentra una ruta hacia la celda objetivo usando BFS, solo por casillas vacías ('.'), evitando muros, fuego y derrumbes.
         """
-        from collections import deque
         visited = {self.pos}
         queue = deque([(self.pos, [])])
         while queue:
@@ -47,8 +53,15 @@ class Brigadista(Agent):
         return []
 
     def step(self):
+        print(f"Brigadista {self.unique_id} blackboard: {self.blackboard.read_all_positions()}")
         if self.state == Brigadista.ARRIVED:
             return
+        # Registrar posición propia en el blackboard
+        self.blackboard.write_position(self.unique_id, self.pos)
+
+        # Consultar posiciones de otros brigadistas (ejemplo de uso)
+        posiciones_otros = {k: v for k, v in self.blackboard.read_all_positions().items() if k != self.unique_id}
+        # Aquí podrías usar posiciones_otros para lógica colaborativa
         # Si no tiene ruta, la calcula
         if not self.path:
             self.path = self._find_path(self.objetivo)
