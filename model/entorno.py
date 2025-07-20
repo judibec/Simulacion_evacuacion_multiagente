@@ -5,6 +5,8 @@ from mesa.space import MultiGrid                       # Espacio tipo grilla con
 from mesa.time import SimultaneousActivation           # Activador para que todos los agentes actúen simultáneamente
 from mesa.visualization.modules import CanvasGrid      # Visualización de la grilla en HTML
 from mesa.visualization.ModularVisualization import ModularServer  # Servidor web para ejecutar la simulación
+from mesa.datacollection import DataCollector
+from mesa.visualization.modules import TextElement
 
 # === AGENTE MÓVIL: EVACUANTE ===
 from .evacuante import Evacuante                       # Importamos el agente Evacuante definido en otro archivo
@@ -139,6 +141,17 @@ class ShoppingModel(Model):
             agent = Brigadista(f"B{i}", self, pos)
             self.grid.place_agent(agent, (new_x, new_y))
             self.schedule.add(agent)
+        
+        # --- INICIALIZAR DATACOLLECTOR ---
+        # Recolector de datos para estadísticas del modelo
+        self.datacollector = DataCollector(
+            model_reporters={
+                "Evacuados": lambda m: sum(1 for a in m.schedule.agents if isinstance(a, Evacuante) and a.state == Evacuante.EVACUATED),
+                "Muertos": lambda m: sum(1 for a in m.schedule.agents if isinstance(a, Evacuante) and a.state == Evacuante.MUERTO),
+                "Vivos": lambda m: sum(1 for a in m.schedule.agents if isinstance(a, Evacuante) and a.state not in [Evacuante.EVACUATED, Evacuante.MUERTO]),
+                "Tick": lambda m: m.tick_counter,
+            }
+        )
 
     # --- MÉTODO PARA GENERAR FUEGO EN CASILLAS DE LOCALES ---
     def _generar_fuego_inicial(self, n_llamas=5):
@@ -275,6 +288,9 @@ class ShoppingModel(Model):
         # Genera un derrumbe aleatorio cada 8 ticks
         if self.tick_counter % 8 == 0:
             self._generar_derrumbe()
+        
+        # Recolecta datos del modelo
+        self.datacollector.collect(self)
 
 # === VISUALIZACIÓN DE LOS AGENTES ===
 def agent_portrayal(agent):
@@ -315,13 +331,30 @@ def agent_portrayal(agent):
 
     return portrayal
 
+# === ELEMENTO DE TEXTO PARA INDICADORES DE KPI ===
+class KPIElement(TextElement):
+    def render(self, model):
+        evacuados = model.datacollector.get_model_vars_dataframe()["Evacuados"].iloc[-1] if model.tick_counter > 0 else 0
+        muertos   = model.datacollector.get_model_vars_dataframe()["Muertos"].iloc[-1] if model.tick_counter > 0 else 0
+        vivos     = model.datacollector.get_model_vars_dataframe()["Vivos"].iloc[-1] if model.tick_counter > 0 else model.num_users
+        tick      = model.tick_counter
+        return (
+            f"<b>Indicadores de la simulación:</b><br>"
+            f"Tick actual: {tick}<br>"
+            f"Civiles evacuados: {evacuados}<br>"
+            f"Civiles muertos: {muertos}<br>"
+            f"Civiles vivos dentro: {vivos}<br>"
+            f"Tiempo total de evacuación: {str(tick*2) + ' seg.' if vivos == 0 else 'En curso'}<br>"
+        )
+
 
 # === CONFIGURAR Y LANZAR EL SERVIDOR MESA ===
 canvas = CanvasGrid(agent_portrayal, 49, 40, canvas_width, canvas_height)
+kpi_element = KPIElement()
 
 server = ModularServer(
     ShoppingModel,            # Modelo
-    [canvas],                 # Elementos visuales
+    [canvas, kpi_element],    # Elementos visuales
     "Simulación Centro Comercial (Mesa)",  # Título
     {}                        # Parámetros del modelo
 )
