@@ -7,6 +7,8 @@ from mesa.visualization.modules import CanvasGrid      # Visualización de la gr
 from mesa.visualization.ModularVisualization import ModularServer  # Servidor web para ejecutar la simulación
 from mesa.datacollection import DataCollector
 from mesa.visualization.modules import TextElement
+from mesa.visualization.modules import ChartModule
+
 
 # === AGENTE MÓVIL: EVACUANTE ===
 from .evacuante import Evacuante                       # Importamos el agente Evacuante definido en otro archivo
@@ -352,9 +354,20 @@ class KPIElement(TextElement):
 canvas = CanvasGrid(agent_portrayal, 49, 40, canvas_width, canvas_height)
 kpi_element = KPIElement()
 
+
+# Módulo de gráficos para mostrar evacuados y muertos
+evacuados_muertos_chart = ChartModule(
+    [
+        {"Label": "Evacuados", "Color": "yellow"},
+        {"Label": "Muertos", "Color": "gray"},
+        #{"Label": "Vivos", "Color": "green"},
+    ],
+    data_collector_name='datacollector'
+)
+
 server = ModularServer(
     ShoppingModel,            # Modelo
-    [canvas, kpi_element],    # Elementos visuales
+    [canvas, kpi_element, evacuados_muertos_chart],    # Elementos visuales
     "Simulación Centro Comercial (Mesa)",  # Título
     {}                        # Parámetros del modelo
 )
