@@ -149,9 +149,6 @@ class Evacuante(Agent):
         # 1. Transición a estado de evacuación si se activa la alarma
         if self.model.alarma_activa and self.state == Evacuante.IDLE:
             self.state = Evacuante.EVACUATING
-            #salida = self.model.salida_mas_cercana(self.pos) #TODO: descomentar si se quiere calcular salida al inicio
-            #if salida:
-            #    self.path = self._find_path(salida)
 
         # 2. Escanear su entorno
         neighborhood = self._get_neighborhood()
@@ -165,13 +162,6 @@ class Evacuante(Agent):
                 if not self.path or self.path[-1] != salida_visible:
                     self.path = self._find_path(salida_visible)
 
-            # Si su ruta quedó vacía o no es válida, busca nueva salida
-            #if not self.path: TODO: descomentar si se quiere recalcular ruta al no tener salida
-            #    salida = self.model.salida_mas_cercana(self.pos)
-            #    if salida:
-            #        self.path = self._find_path(salida)
-            #    else:
-            #        self.state = Evacuante.BLOCKED  # no hay ruta posible
             else:
                 brigadista = self._see_brigadista(neighborhood)
                 if brigadista:

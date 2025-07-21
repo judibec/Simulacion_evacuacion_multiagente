@@ -125,7 +125,7 @@ class ShoppingModel(Model):
             self.schedule.add(agent)             # Lo añade al scheduler
 
         # --- COLOCAR BRIGADISTAS EN POSICIONES BLANCAS ('.') ---
-        brigadista_positions = [(14, 11), (6, 22), (20, 21), (43, 25), (27, 5), (33, 31), (6, 35)]
+        brigadista_positions = [(14, 11), (6, 22), (20, 24), (41, 25), (6,7), (24,5), (39, 5), (33, 31), (6, 35)]
         for i, pos in enumerate(brigadista_positions, start=1):
             # Asegurar que la posición es válida
             while True:
